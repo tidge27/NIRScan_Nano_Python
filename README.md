@@ -11,3 +11,7 @@ Details on `ctrl_transfer` in the `PyUSB` library: https://www.beyondlogic.org/u
 Details on writing / reading: https://stackoverflow.com/questions/29345325/raspberry-pyusb-gets-resource-busy
 
 USB communication example for another product using python/PyUSB: https://github.com/respeaker/respeaker_python_library/blob/master/respeaker/usb_hid/pyusb_backend.py 
+
+Cython HIDAPI:
+https://github.com/trezor/cython-hidapi
+After much experimentation, this has been used instead of PyUSB.  This library works on MacOS, and provides a more simple interface with the HID device type.
