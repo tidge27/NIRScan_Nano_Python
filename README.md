@@ -1,7 +1,7 @@
-#NIR Scan Nano Python Driver
+# NIR Scan Nano Python Driver
 This is a WIP of a driver to support taking a scan using the NIR Nano spectrometer by TI
 
-##Notes and References
+## Notes and References
 For information on the scan workflow; look at section 5.2.1 of the DLP® NIRscan™ Nano EVM User's Guide.
 
 For information on the USB commands; refer to section H.1 of the DLP® NIRscan™ Nano EVM User's Guide.
