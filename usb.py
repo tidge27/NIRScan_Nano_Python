@@ -24,10 +24,25 @@ def readCommand(device, group_byte, command_byte, data = []):
     time.sleep(0.01)
 
     # read back the answer
-    header = device.read(4)
-    print("Command Requested By Host: ", "".join('{:02X}'.format(x) for x in header[0:1]))
-    print("Response Length: {} bytes".format(header[2]))
-    data_requested = device.read(header[2])
+    read_in = device.read(64)
+    header = read_in[0:4]
+    # print("Header: ", header)
+    read_in = read_in[4:]
+
+    data_length = header[3] << 8 | header[2]
+    # print(data_length)
+
+    # print("Command Requested By Host: ", "".join('{:02X}'.format(x) for x in header[0:1]))
+    # print("Response Length: {} bytes".format(header[2]))
+    if data_length > 60:
+        # pass
+        data_remaining_length = data_length-60
+        while(data_remaining_length > 0):
+            read_in.extend(device.read(min(60, data_remaining_length)))
+            data_remaining_length -= 60
+        data_requested = read_in
+    else:
+        data_requested = read_in[0:data_length]
 
     return data_requested
 
@@ -44,7 +59,6 @@ def writeCommand(device, group_byte, command_byte, data = []):
     ]
     # Add the data bytes to the end of the list
     bytes.extend(data)
-
     # Start the write transaction
     device.write(bytes)
 
@@ -52,6 +66,6 @@ def writeCommand(device, group_byte, command_byte, data = []):
     time.sleep(0.01)
 
     # read back the response
-    header = device.read(4)
+    header = device.read(100)
 
     return header

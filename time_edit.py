@@ -19,7 +19,7 @@ device_time_list = readCommand(h, 0x03, 0x0C)
 print(device_time_list)
 
 # Add 5 minutes to the time
-device_time_list[-2] += 5
+device_time_list[len(device_time_list)-2] += 5
 
 # Write the updated device time
 response = writeCommand(h, 0x03, 0x09, device_time_list)

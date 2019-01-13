@@ -29,6 +29,7 @@
 import hid
 import time
 from usb import readCommand, writeCommand
+from util import shiftBytes
 
 h = hid.device()
 try:
@@ -40,25 +41,63 @@ except IOError as ex:
     exit()
 
 # enable non-blocking mode
-h.set_nonblocking(1)
+h.set_nonblocking(0)
 
+response = readCommand(h, 0x02, 0x20, [0x00, 124])
+print("Read stored scan configurations: ",response)
+
+response = readCommand(h, 0x02, 0x22)
+print("Read number of stored scan configurations: ",response)
+
+response = readCommand(h, 0x02, 0x23)
+print("Read active scan configuration : ",response)
+
+# Set the active scan configuration
+response = writeCommand(h, 0x02, 0x24, [0x01])
+print("Set the active scan configuration: ",response)
+
+# time.sleep(1)
+
+response = readCommand(h, 0x02, 0x23)
+print("Read active scan configuration : ",response)
 
 # Write the start scan command, data 0x00, since we don't want to store the scan in the SD card
 response = writeCommand(h, 0x02, 0x18, [0x00])
+print("Write the start scan command: ", response)
 
-
+# time.sleep(0.5)
 # Read the device status
+print("Scan in progress")
 device_status = readCommand(h, 0x04, 0x03)
-print(device_status)
 
-while(device_status == [0x00, 0x00, 0x00, 0x02]):
+while(device_status[0] & 0x02 == 0x02):
     time.sleep(0.1)
     device_status = readCommand(h, 0x04, 0x03)
+print("Scan complete")
 
 # NNO_CMD_FILE_GET_READSIZE
-# Data = NNO_FILE_SCAN_DATA
+# Data byte = NNO_FILE_SCAN_DATA
+# data size in bytes
 data_size = readCommand(h, 0x00, 0x2D, [0x00])
+print("data size: ", data_size)
+data_size.reverse()
+data_size_combined = shiftBytes(data_size)
 
+# Actually get the file
+# repeatedly NNO_GetFileData
+file = []
+# print("Expected file length: ", data_size_combined)
+
+while(len(file) < data_size_combined):
+    data = readCommand(h, 0x00, 0x2E)
+    file.extend(data)
+    # print("file length: ", len(file))
+
+
+print("Recieved file length: ", len(file))
+print("Expected file length: ", data_size_combined)
+
+# can also get calibration data evm.cpp:107
 
 
 # need to check that this hasn't changed, and is continually
