@@ -75,6 +75,11 @@ while(device_status[0] & 0x02 == 0x02):
     device_status = readCommand(h, 0x04, 0x03)
 print("Scan complete")
 
+
+
+
+
+
 # NNO_CMD_FILE_GET_READSIZE
 # Data byte = NNO_FILE_SCAN_DATA
 # data size in bytes
@@ -90,12 +95,80 @@ file = []
 
 while(len(file) < data_size_combined):
     data = readCommand(h, 0x00, 0x2E)
+    # data.reverse()
     file.extend(data)
     # print("file length: ", len(file))
 
 
 print("Recieved file length: ", len(file))
 print("Expected file length: ", data_size_combined)
+
+byte_file = bytearray(file)
+print(byte_file)
+print(file)
+
+
+
+# Read the calibration
+# NNO_CMD_FILE_GET_READSIZE
+# Data byte = NNO_FILE_SCAN_DATA
+# data size in bytes
+data_size = readCommand(h, 0x00, 0x2D, [0x02])
+print("data size: ", data_size)
+data_size.reverse()
+data_size_combined = shiftBytes(data_size)
+
+# Actually get the file
+# repeatedly NNO_GetFileData
+file2 = []
+# print("Expected file length: ", data_size_combined)
+
+while(len(file2) < data_size_combined):
+    data = readCommand(h, 0x00, 0x2E)
+    # data.reverse()
+    file2.extend(data)
+    # print("file length: ", len(file))
+
+
+print("Recieved file length: ", len(file2))
+print("Expected file length: ", data_size_combined)
+
+byte_file2 = bytearray(file2)
+print(byte_file2)
+print(file2)
+
+combined_bytes = file.copy()
+
+combined_bytes.extend(file2)
+
+byte_file_combined = bytearray(combined_bytes)
+
+
+
+
+
+
+
+
+newFile = open("binary.dat", "wb")
+newFile.write(byte_file_combined)
+
+from test_dll import *
+
+results = scanResults()
+print(results)
+
+res_pointer = ctypes.pointer(results)
+print(res_pointer)
+
+buffer = ctypes.create_string_buffer(len(byte_file), byte_file)
+buffer_pointer = ctypes.byref(buffer)
+
+size_number = ctypes.c_size_t(len(byte_file))
+print(size_number)
+dlp_nano_lib.dlpspec_scan_interpret(buffer_pointer, size_number, res_pointer)
+
+
 
 # can also get calibration data evm.cpp:107
 
