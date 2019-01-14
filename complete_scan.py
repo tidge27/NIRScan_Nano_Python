@@ -1,6 +1,6 @@
 from scan import get_file, perform_scan, NNO_FILE_REF_CAL_COEFF, NNO_FILE_SCAN_DATA
 import hid
-from test_dll import scan_interpret
+from spectrum_library import scan_interpret
 import json
 import matplotlib.pyplot as plt
 
