@@ -1,7 +1,6 @@
 import ctypes
 import json
 
-dlp_nano_lib = ctypes.CDLL("/Users/thomasgarry/ti/DLPSpectrumLibrary_2.0.2/src/libtest.dylib")
 
 class calibCoeffs(ctypes.Structure):
     _fields_ = [
@@ -35,9 +34,6 @@ class slewScanConfig(ctypes.Structure):
         ("section", slewScanSection*5)
     ]
 
-
-
-
 class scanResults(ctypes.Structure):
     _fields_ = [
         ("header_version", ctypes.c_uint32),
@@ -66,50 +62,8 @@ class scanResults(ctypes.Structure):
         ("length", ctypes.c_int)
     ]
 
-classes = [slewScanConfig, slewScanConfigHead, slewScanSection, calibCoeffs]
-
-dlp_nano_lib.dlpspec_scan_interpret.argtypes = [ctypes.POINTER(ctypes.c_char*3822), ctypes.c_size_t, ctypes.POINTER(scanResults)]
-
-dlp_nano_lib.dlpspec_scan_slew_get_end_nm.argtypes = [ctypes.POINTER(slewScanConfig)]
-
-
-results = scanResults()
-print(results)
-res_pointer = ctypes.byref(results)
-print(res_pointer)
-
-byte_input_list = []
-
-
-with open("binary.dat", "rb") as binaryfile:
-    myArr = bytearray(binaryfile.read())
-for byte in myArr:
-    byte_input_list.append(byte)
-print(byte_input_list)
-byte_input_list = byte_input_list[:int(len(byte_input_list)/2)]
-print(byte_input_list)
-byte_file = bytearray(byte_input_list)
-print(byte_file)
-
-
-buffer = ctypes.create_string_buffer(3822)
-for counter, byte in enumerate(byte_input_list):
-    buffer[counter] = byte
-# buffer[0] = 116
-print(buffer[0])
-
-buffer_pointer = ctypes.pointer(buffer)
-
-size_number = ctypes.c_size_t(len(byte_file))
-print(size_number)
-
-# time.sleep(1)
-dlp_nano_lib.dlpspec_scan_interpret(buffer_pointer, size_number, res_pointer)
-
-print(results.scan_name)
-print((results._fields_))
-print(dir(results))
-
+dlp_nano_lib = ctypes.CDLL("/Users/thomasgarry/ti/DLPSpectrumLibrary_2.0.2/src/libtest.dylib")
+dlp_nano_lib.dlpspec_scan_interpret.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(scanResults)]
 
 
 def unpack_fields(result_in):
@@ -118,8 +72,6 @@ def unpack_fields(result_in):
         try:
             dict[field_name] = unpack_fields(getattr(result_in, field_name))
         except Exception as error:
-            # print(error)
-            print(field_name, getattr(result_in, field_name))
             value = getattr(result_in, field_name)
 
             if type(value) == type(bytes()):
@@ -136,26 +88,32 @@ def unpack_fields(result_in):
     return dict
 
 
-unpacked = unpack_fields(results)
-print(unpacked)
+def scan_interpret(myArr):
 
-print(json.dumps(unpacked, skipkeys=True))
+    byte_input_list = []
+    for byte in myArr:
+        byte_input_list.append(byte)
 
+    # Initialise the input data buffer
+    buffer = ctypes.create_string_buffer(len(byte_input_list))
+    for counter, byte in enumerate(byte_input_list):
+        buffer[counter] = byte
+    # Create the pointer to the buffer
+    buffer_pointer = ctypes.pointer(buffer)
 
+    # Create the size variable
+    size_number = ctypes.c_size_t(len(byte_input_list))
 
-# for field_name, field_type in results._fields_:
-#     try:
-#         for field_name2, field_type2 in getattr(results, field_name)._fields_:
-#             print("     ", field_name2, getattr(getattr(results, field_name), field_name2))
-#     except:
-#         pass
-#     print(field_name, getattr(results, field_name))
-    # print(json.dumps(getattr(results, field[0])))
+    # Create the results variable
+    results = scanResults()
+    # Create the pointer to the results
+    res_pointer = ctypes.byref(results)
 
+    # Run the library fucntion
+    dlp_nano_lib.dlpspec_scan_interpret(buffer_pointer, size_number, res_pointer)
 
-# def our_function(numbers):
-#     global _sum
-#     num_numbers = len(numbers)
-#     array_type = ctypes.c_int * num_numbers
-#     result = _sum.our_function(ctypes.c_int(num_numbers), array_type(*numbers))
-#     return int(result)
+    # unpack the results
+    unpacked = unpack_fields(results)
+
+    return json.dumps(unpacked)
+
