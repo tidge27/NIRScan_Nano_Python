@@ -1,5 +1,5 @@
 import ctypes
-import time
+import json
 
 dlp_nano_lib = ctypes.CDLL("/Users/thomasgarry/ti/DLPSpectrumLibrary_2.0.2/src/libtest.dylib")
 
@@ -66,6 +66,7 @@ class scanResults(ctypes.Structure):
         ("length", ctypes.c_int)
     ]
 
+classes = [slewScanConfig, slewScanConfigHead, slewScanSection, calibCoeffs]
 
 dlp_nano_lib.dlpspec_scan_interpret.argtypes = [ctypes.POINTER(ctypes.c_char*3822), ctypes.c_size_t, ctypes.POINTER(scanResults)]
 
@@ -106,6 +107,52 @@ print(size_number)
 dlp_nano_lib.dlpspec_scan_interpret(buffer_pointer, size_number, res_pointer)
 
 print(results.scan_name)
+print((results._fields_))
+print(dir(results))
+
+
+
+def unpack_fields(result_in):
+    dict = {}
+    for field_name, field_type in result_in._fields_:
+        try:
+            dict[field_name] = unpack_fields(getattr(result_in, field_name))
+        except Exception as error:
+            # print(error)
+            print(field_name, getattr(result_in, field_name))
+            value = getattr(result_in, field_name)
+
+            if type(value) == type(bytes()):
+                value = value.decode("utf-8")
+            elif type(value) not in [type(int()), type(float)]:
+                newval = []
+                for i in value:
+                    try:
+                        newval.append(unpack_fields(i))
+                    except Exception as error:
+                        newval.append(i)
+                value = newval
+            dict[field_name] = value
+    return dict
+
+
+unpacked = unpack_fields(results)
+print(unpacked)
+
+print(json.dumps(unpacked, skipkeys=True))
+
+
+
+# for field_name, field_type in results._fields_:
+#     try:
+#         for field_name2, field_type2 in getattr(results, field_name)._fields_:
+#             print("     ", field_name2, getattr(getattr(results, field_name), field_name2))
+#     except:
+#         pass
+#     print(field_name, getattr(results, field_name))
+    # print(json.dumps(getattr(results, field[0])))
+
+
 # def our_function(numbers):
 #     global _sum
 #     num_numbers = len(numbers)
