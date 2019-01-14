@@ -1,6 +1,8 @@
 from scan import get_file, perform_scan, NNO_FILE_REF_CAL_COEFF, NNO_FILE_SCAN_DATA
 import hid
 from test_dll import scan_interpret
+import json
+import matplotlib.pyplot as plt
 
 # Try to open the device, otherwise read in file data
 h = hid.device()
@@ -11,6 +13,7 @@ try:
 except IOError as ex:
     print(ex)
     print("Looks like the NIRScan Nano isn't connected")
+    print("Opening the .dat file instead")
     device_open = False
 
 
@@ -36,7 +39,19 @@ else:
     with open("binary.dat", "rb") as binaryfile:
         myArr = bytearray(binaryfile.read())
     # send the first half through to the interpret function
-    scan_data = myArr[0:int(len(myArr)/2)]
+    scan_data = myArr[:int(len(myArr)/2)]
 
 # Interpret data
-print(scan_interpret(scan_data))
+data = scan_interpret(scan_data)
+data_dict = json.loads(data)
+
+print(data)
+
+plt.plot(
+    data_dict["wavelength"][0:data_dict["length"]],
+    data_dict["intensity"][0:data_dict["length"]]
+)
+plt.ylabel('Intensity')
+plt.xlabel('Wavelength / nm')
+plt.show()
+
