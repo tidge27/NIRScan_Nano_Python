@@ -3,6 +3,9 @@ import hid
 from spectrum_library import scan_interpret
 import json
 import matplotlib.pyplot as plt
+from os import walk
+
+
 
 # Try to open the device, otherwise read in file data
 h = hid.device()
@@ -32,11 +35,22 @@ if device_open:
 
     # combine the data and save the dat file (readable by the GUI program provided by TI)
     byte_file_combined = bytearray(scan_data + reference_data)
-    newFile = open("output.dat", "wb")
+
+    existing = ["-1.dat"]
+    for (dirpath, dirnames, filenames) in walk("data"):
+        existing.extend(filenames)
+        break
+    existing = [int(file[: -4]) for file in existing]
+    existing.sort()
+    file_index = existing[-1] + 1
+    file_save_name = str(file_index).zfill(4)
+
+    newFile = open("data/{}.dat".format(file_save_name), "wb")
     newFile.write(byte_file_combined)
 else:
     # Open the binary
-    with open("binary.dat", "rb") as binaryfile:
+    file_save_name = "0003"
+    with open("data/{}.dat".format(file_save_name), "rb") as binaryfile:
         myArr = bytearray(binaryfile.read())
     # send the first half through to the interpret function
     scan_data = myArr[:int(len(myArr)/2)]
@@ -46,6 +60,9 @@ data = scan_interpret(scan_data)
 data_dict = json.loads(data)
 
 print(data)
+print("Enter JSON save prefix")
+jsonFile = open("json/{}_{}.JSON".format(input(), file_save_name), "w")
+jsonFile.write(data)
 
 plt.plot(
     data_dict["wavelength"][0:data_dict["length"]],
