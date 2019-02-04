@@ -66,7 +66,7 @@ def read_spectrometer_save(h):
     # Setup the file names for the JSON data
     dat_file_name = "spectrometer_reading_{}.dat".format(str(scan_start_timestamp).zfill(14))
     json_file_name = "spectrometer_reading_{}.JSON".format(str(scan_start_timestamp).zfill(14))
-    # Write the dat file (in the formatt provided by the TI GUI
+    # Write the dat file (in the format provided by the TI GUI
     scan_dat_file = open(os.path.join(spectrometer_folder, dat_file_name), "wb")
     scan_dat_file.write(byte_file_combined)
     # Interpret the data to JSON object
@@ -74,14 +74,6 @@ def read_spectrometer_save(h):
     # Save the data in a .JSON file
     scan_json_file = open(os.path.join(spectrometer_folder, json_file_name), "w")
     scan_json_file.write(json_formatted_data)
-
-import random
-def take_reading():
-    print("Starting reading", str(time.time()))
-    start_time = time.time()
-    while time.time() < start_time + 10:
-        random.randint(1000, 2000)
-    print("Reading complete", str(time.time()))
 
 # start logging
 
@@ -99,17 +91,16 @@ async def start_ciss_log():
 
 async def start_spectrometer_log():
 
-    # h = hid.device()
-    # try:
-    #     logging.info("Opening the spectrometer HID device")
-    #     h.open(0x0451, 0x4200)  # NIRScan Nano VendorID/ProductID
-    # except IOError as ex:
-    #     logging.warning("NIRScan Nano not found")
-    #     return
+    h = hid.device()
+    try:
+        logging.info("Opening the spectrometer HID device")
+        h.open(0x0451, 0x4200)  # NIRScan Nano VendorID/ProductID
+    except IOError as ex:
+        logging.warning("NIRScan Nano not found")
+        return
 
     while(1):
-        take_reading()
-        # read_spectrometer_save(h)
+        read_spectrometer_save(h)
         await asyncio.sleep(5)
     pass
 

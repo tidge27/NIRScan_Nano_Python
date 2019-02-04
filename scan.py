@@ -83,7 +83,7 @@ def perform_scan(h):
     device_status = readCommand(h, 0x04, 0x03)
 
     while(device_status[0] & 0x02 == 0x02):
-        asyncio.sleep(0.1)
+        await asyncio.sleep(0.1)
         device_status = readCommand(h, 0x04, 0x03)
     logging.info("Scan complete")
 
