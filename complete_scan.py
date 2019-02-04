@@ -4,6 +4,7 @@ from spectrum_library import scan_interpret
 import json
 import matplotlib.pyplot as plt
 from os import walk
+import asyncio
 
 
 
@@ -23,7 +24,6 @@ except IOError as ex:
 if device_open:
     # disable non-blocking mode, makes life easier, sacrifices speed
     h.set_nonblocking(0)
-
 
     # Do scan
     perform_scan(h)

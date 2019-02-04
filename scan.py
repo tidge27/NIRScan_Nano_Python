@@ -28,7 +28,8 @@
 import time
 from usb import readCommand, writeCommand
 from util import shiftBytes
-
+import logging
+import asyncio
 
 # May want to provide some sort of CLI for these settings, perhaps using data from the GUI
 
@@ -49,7 +50,7 @@ def get_file(h, file_to_read):
     # NNO_CMD_FILE_GET_READSIZE
     # data size in bytes
     data_size = readCommand(h, 0x00, 0x2D, [file_to_read])
-    print("data size: ", data_size)
+    logging.debug("data size: ", data_size)
     data_size.reverse()
     data_size_combined = shiftBytes(data_size)
 
@@ -68,23 +69,23 @@ def get_file(h, file_to_read):
 def perform_scan(h):
     # Set the active scan configuration
     response = writeCommand(h, 0x02, 0x24, [0x01])
-    print("Set the active scan configuration: ",response)
+    logging.debug("Set the active scan configuration: ",response)
 
     # response = readCommand(h, 0x02, 0x23)
     # print("Read active scan configuration : ",response)
 
     # Write the start scan command, data 0x00, since we don't want to store the scan in the SD card
     response = writeCommand(h, 0x02, 0x18, [0x00])
-    print("Write the start scan command: ", response)
+    logging.debug("Write the start scan command: ", response)
 
     # Read the device status
-    print("Scan in progress")
+    logging.info("Scan in progress")
     device_status = readCommand(h, 0x04, 0x03)
 
     while(device_status[0] & 0x02 == 0x02):
-        time.sleep(0.1)
+        asyncio.sleep(0.1)
         device_status = readCommand(h, 0x04, 0x03)
-    print("Scan complete")
+    logging.info("Scan complete")
 
 
 # can also get calibration data evm.cpp:107
