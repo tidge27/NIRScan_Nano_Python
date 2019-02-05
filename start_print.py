@@ -4,12 +4,19 @@ import CissUsbConnectord
 import time
 import hid
 import logging
+import platform
+import threading
+from threading import Thread
+
 
 from scan import get_file, perform_scan, NNO_FILE_REF_CAL_COEFF, NNO_FILE_SCAN_DATA
 from spectrum_library import scan_interpret
 
+
+
+
 # Settings for the print recording session
-directory_index = 2
+directory_index = 3
 root_folder_name  = "sesame-" + str(directory_index).zfill(16)
 measurements_folder_name = "Measurements"
 
@@ -35,15 +42,39 @@ spectrometer_folder = os.path.join(
 )
 
 
+
+
 # Create the file structure
 if os.path.isdir(root_folder_name):
-    print("Directory `{}` already exists.  Please change the directory index for the build you wish to start".format(root_folder_name))
+    logging.error("Directory `{}` already exists.  Please change the directory index for the build you wish to start".format(root_folder_name))
     exit()
 else:
     for sensor, directory in sensor_directories.items():
         structure = os.path.join(root_folder_name, measurements_folder_name, directory)
         os.makedirs(structure)
 
+
+logPath = root_folder_name
+
+logFileName = "print_log"
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s",
+    handlers=[
+        logging.FileHandler("{0}/{1}.log".format(logPath, logFileName)),
+        logging.StreamHandler()
+    ]
+)
+
+
+logging.info("Start Timestamp : {}".format(str(int(time.time()*1000))))
+logging.info(platform.machine())
+logging.info(platform.version())
+logging.info(platform.platform())
+logging.info(platform.uname())
+logging.info(platform.system())
+logging.info(platform.processor())
 
 
 
@@ -77,7 +108,7 @@ def read_spectrometer_save(h):
 
 # start logging
 
-async def start_ciss_log():
+def start_ciss_log(running):
     try:
         logging.info("Opening the CISS device")
         node = CissUsbConnectord.CISSNode()
@@ -85,11 +116,11 @@ async def start_ciss_log():
         logging.warning("CISS device not found")
         return
 
-    while(1):
+    while(running.is_set()):
         node.stream()
 
 
-async def start_spectrometer_log():
+def start_spectrometer_log(running):
 
     h = hid.device()
     try:
@@ -99,17 +130,31 @@ async def start_spectrometer_log():
         logging.warning("NIRScan Nano not found")
         return
 
-    while(1):
+    while(running.is_set()):
+        time.sleep(5)
         read_spectrometer_save(h)
-        await asyncio.sleep(5)
-    pass
 
 
-async def main():
-    await asyncio.gather(
-        start_ciss_log(),
-        start_spectrometer_log()
-    )
+def main():
+    run_event = threading.Event()
+    run_event.set()
+
+    ciss_log = Thread(target=start_ciss_log, args=[run_event])
+    spectrometer_log = Thread(target=start_spectrometer_log, args=[run_event])
+    ciss_log.start()
+    spectrometer_log.start()
+
+    try:
+        while 1:
+            time.sleep(.1)
+    except KeyboardInterrupt:
+        print("attempting to close threads. Max wait = 10s")
+        run_event.clear()
+        ciss_log.join()
+        spectrometer_log.join()
+        print("threads successfully closed")
 
 
-asyncio.run(main())
+
+main()
+

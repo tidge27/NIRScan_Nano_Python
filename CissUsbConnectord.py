@@ -25,13 +25,13 @@
 #
 # USB host Demo script for streaming data from a CISS sensor node with firmware DataStreamer v02.03.00
 #
-# The script can be configured by sensor.ini and writes data to dataStream.csv or detectedEvents.csv, this can be
+# The script can be configured by CISS_sensor.ini and writes data to dataStream.csv or detectedEvents.csv, this can be
 # changed with dataFileLocation, dataFileLocationEvent and iniFileLocation; output to stdout can be configured with printInformation and printInformation_Conf.
 # printInformation_Conf is showing the commands configuring the sensor node as well as the respective acknowledgements
 # printInformation is showing the streamed sensor values or the events. In case of streaming with maximum sampling rate for several sensor 
 # it is suggested to set printInformation to false, otherwise (at least on some systems) data could be lost.
 #
-# Important is the correct usb interface, usually /dev/ttyACM0 or COM8 for example. Please update the corresponding value in sensor.ini
+# Important is the correct usb interface, usually /dev/ttyACM0 or COM8 for example. Please update the corresponding value in CISS_sensor.ini
 #
 # There are three open topics with CISS firmware DataStreamer v02.01.00:
 # - a configuration of individual sampling periods for acceleration, gyro and magnetometer is not possible.
@@ -43,7 +43,7 @@
 #	JS     Change delay between a send of commands to the CISS device from 0.05 (50ms) to 0.2    (200 ms) 
 #
 #
-# The ini-file sensor.ini looks like:
+# The ini-file CISS_sensor.ini looks like:
 # [sensorcfg]
 # sensorid = Dummy
 # acc_stream = true
@@ -86,8 +86,8 @@ import serial, signal, configparser, os, csv, time
  
 dataFileLocation = 'dataStream.csv'
 dataFileLocationEvent = 'detectedEvents.csv'
-iniFileLocation = 'sensor.ini'
-printInformation = True
+iniFileLocation = 'CISS_sensor.ini'
+printInformation = False
 printInformation_Conf = True
 
 sensor_id_glbl = "dummy"
@@ -373,7 +373,7 @@ def write_to_csv(id, buff, tstamp):
         return
 
     if not os.path.exists(dataFileLocation):
-        with open(dataFileLocation, "wb") as csvOpen:
+        with open(dataFileLocation, "w") as csvOpen:
             csvobj = csv.writer(csvOpen, dialect='excel')
             csvobj.writerow([" id ", " timestamp ", " ax ", " ay ", " az ",
                              " gx ", " gy ", " gz ", " mx ", " my ", " mz ",
@@ -387,7 +387,7 @@ def write_to_csv(id, buff, tstamp):
 def write_to_csv_event(id, event, tstamp):
     global dataFileLocationEvent
     if not os.path.exists(dataFileLocationEvent):
-        with open(dataFileLocationEvent, "wb") as csvOpen:
+        with open(dataFileLocationEvent, "w") as csvOpen:
             csvobj = csv.writer(csvOpen, dialect='excel')
             csvobj.writerow([" id ", " timestamp ", "Event"])
     with open(dataFileLocationEvent, "a") as csvOpen:
@@ -449,7 +449,7 @@ class CISSNode:
         # disable all sensors before configuration
         self.disable_sensors()
         
-        # configure the sensors as given in the sensor.ini file  
+        # configure the sensors as given in the CISS_sensor.ini file  
         self.config_sensors()
 
     def get_ini_config(self):
@@ -646,13 +646,12 @@ def ctrl_c_handler(signal, frame,node):
     raise Exception("")
 
 
-
-def main():
-    node = CISSNode()
-    signal.signal(signal.SIGINT, ctrl_c_handler)
-    while 1:
-        node.stream()
-
+# # node = CISSNode()
+# def main():
+#     signal.signal(signal.SIGINT, ctrl_c_handler)
+#     while 1:
+#         node.stream()
+#
 # if __name__ == "__main__":
 #     try:
 #         main()

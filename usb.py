@@ -39,11 +39,11 @@ def readCommand(device, group_byte, command_byte, data = []):
         data_remaining_length = data_length-60
         while(data_remaining_length > 0):
             read_input = device.read(min(64, data_remaining_length))
-            print(len(read_input))
+            # print(len(read_input))
             read_in.extend(read_input)
             data_remaining_length -= min(64, data_remaining_length)
-            print(read_in)
-            print(data_remaining_length)
+            # print(read_in)
+            # print(data_remaining_length)
         data_requested = read_in
     else:
         data_requested = read_in[0:data_length]
