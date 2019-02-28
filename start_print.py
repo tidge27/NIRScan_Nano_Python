@@ -9,87 +9,115 @@ import threading
 from threading import Thread
 
 
-from scan import get_file, perform_scan, NNO_FILE_REF_CAL_COEFF, NNO_FILE_SCAN_DATA
+from scan import get_file, perform_scan, check_hibernate_flag, NNO_FILE_REF_CAL_COEFF, NNO_FILE_SCAN_DATA
 from spectrum_library import scan_interpret
 
 
 
-
-# Settings for the print recording session
-directory_index = 3
-root_folder_name  = "sesame-" + str(directory_index).zfill(16)
-measurements_folder_name = "Measurements"
-
-
-sensor_directories = {
-    'CISS': "L0",
-    'Spectrometer': "L1"
-}
-
-# Set the data location for the CISS data
-CissUsbConnectord.dataFileLocation = os.path.join(
-    root_folder_name,
-    measurements_folder_name,
-    sensor_directories['CISS'],
-    "CISS_measurements.csv"
-)
-
-# set the folder for the spectrometer data
-spectrometer_folder = os.path.join(
-    root_folder_name,
-    measurements_folder_name,
-    sensor_directories['Spectrometer']
-)
+def setup_print():
+    # Settings for the print recording session
+    directory_index = 9
+    root_folder_name  = "sesame-" + str(directory_index).zfill(16)
+    measurements_folder_name = "Measurements"
 
 
+    sensor_directories = {
+        'CISS': "L0",
+        'Spectrometer': "L1"
+    }
+
+    # Set the data location for the CISS data
+    CissUsbConnectord.data_file_folder = os.path.join(
+        root_folder_name,
+        measurements_folder_name,
+        sensor_directories['CISS']
+    )
+
+    # Filename prefix for timestamped CSVs
+    CissUsbConnectord.data_file_prefix = "CISS_measurements_"
+
+    # Time interval upon which to split CVSs
+    CissUsbConnectord.minutes_per_csv = 10
+
+    # set the folder for the spectrometer data
+    global spectrometer_folder
+    spectrometer_folder = os.path.join(
+        root_folder_name,
+        measurements_folder_name,
+        sensor_directories['Spectrometer']
+    )
 
 
-# Create the file structure
-if os.path.isdir(root_folder_name):
-    logging.error("Directory `{}` already exists.  Please change the directory index for the build you wish to start".format(root_folder_name))
-    exit()
-else:
-    for sensor, directory in sensor_directories.items():
-        structure = os.path.join(root_folder_name, measurements_folder_name, directory)
-        os.makedirs(structure)
 
 
-logPath = root_folder_name
-
-logFileName = "print_log"
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s",
-    handlers=[
-        logging.FileHandler("{0}/{1}.log".format(logPath, logFileName)),
-        logging.StreamHandler()
-    ]
-)
+    # Create the file structure
+    if os.path.isdir(root_folder_name):
+        logging.error("Directory `{}` already exists.  Please change the directory index for the build you wish to start".format(root_folder_name))
+        exit()
+    else:
+        for sensor, directory in sensor_directories.items():
+            structure = os.path.join(root_folder_name, measurements_folder_name, directory)
+            os.makedirs(structure)
 
 
-logging.info("Start Timestamp : {}".format(str(int(time.time()*1000))))
-logging.info(platform.machine())
-logging.info(platform.version())
-logging.info(platform.platform())
-logging.info(platform.uname())
-logging.info(platform.system())
-logging.info(platform.processor())
+    logPath = root_folder_name
+
+    logFileName = "print_log"
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s",
+        handlers=[
+            logging.FileHandler("{0}/{1}.log".format(logPath, logFileName)),
+            logging.StreamHandler()
+        ]
+    )
+
+
+    logging.info("Start Timestamp : {}".format(str(int(time.time()*1000))))
+    logging.info(platform.machine())
+    logging.info(platform.version())
+    logging.info(platform.platform())
+    logging.info(platform.uname())
+    logging.info(platform.system())
+    logging.info(platform.processor())
 
 
 
 def read_spectrometer_save(h):
 
     # disable non-blocking mode, makes life easier, sacrifices speed
-    h.set_nonblocking(0)
+    try:
+        h.set_nonblocking(0)
+    except ValueError as not_open_error:
+        try:
+            logging.debug("Attempting reconnect to spectrometer")
+            h.open(0x0451, 0x4200)
+            check_hibernate_flag(h)
+            logging.info("Successfully reconnected to spectrometer")
+        except OSError as open_failed:
+            pass
+        return
+
     # Get timestamp at the start of the spectrometer reading
     scan_start_timestamp = int(time.time() * 1000)
-    # Do scan
-    perform_scan(h)
-    # Get scan data
-    scan_data = get_file(h, NNO_FILE_SCAN_DATA)
-    # Get calibration data
-    reference_data = get_file(h, NNO_FILE_REF_CAL_COEFF)
+
+    try:
+
+        # Do scan
+        perform_scan(h)
+        # Get scan data
+        scan_data = get_file(h, NNO_FILE_SCAN_DATA)
+        # Get calibration data
+        reference_data = get_file(h, NNO_FILE_REF_CAL_COEFF)
+    except OSError as hid_error:
+        logging.warning("Something has gone wrong with the Spectrometer Will attempt to reconnect soon")
+        try:
+            h.open(0x0451, 0x4200)
+        except OSError as open_failed:
+            pass
+        return
+
 
     # combine the data and save the dat file (readable by the GUI program provided by TI)
     byte_file_combined = bytearray(scan_data + reference_data)
@@ -114,10 +142,23 @@ def start_ciss_log(running):
         node = CissUsbConnectord.CISSNode()
     except Exception as ex:
         logging.warning("CISS device not found")
-        return
+        node = None
+        # return
 
     while(running.is_set()):
-        node.stream()
+        if node:
+            try:
+                node.stream()
+            except Exception as error:
+                logging.warning("the CISS has been disconnected!")
+                node = None
+        else:
+            try:
+                time.sleep(1)
+                node = CissUsbConnectord.CISSNode()
+                logging.info("Connected to the CISS device")
+            except Exception as ex:
+                node = None
 
 
 def start_spectrometer_log(running):
@@ -126,9 +167,9 @@ def start_spectrometer_log(running):
     try:
         logging.info("Opening the spectrometer HID device")
         h.open(0x0451, 0x4200)  # NIRScan Nano VendorID/ProductID
+        check_hibernate_flag(h)
     except IOError as ex:
         logging.warning("NIRScan Nano not found")
-        return
 
     while(running.is_set()):
         time.sleep(5)
@@ -155,6 +196,7 @@ def main():
         print("threads successfully closed")
 
 
-
-main()
+if __name__ == '__main__':
+    setup_print()
+    main()
 

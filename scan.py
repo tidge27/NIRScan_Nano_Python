@@ -88,6 +88,15 @@ def perform_scan(h):
     logging.info("Scan complete")
 
 
+def check_hibernate_flag(h):
+    hibernate_flag_status = readCommand(h, 0x03, 0x0F)
+    logging.debug("Hibernate flag status: {}".format(hibernate_flag_status))
+    if hibernate_flag_status[0] == 1:
+        response = writeCommand(h, 0x03, 0x0E, [0])
+        hibernate_flag_status = readCommand(h, 0x03, 0x0F)
+        logging.debug("Updated hibernate flag status: {}".format(hibernate_flag_status))
+
+
 # can also get calibration data evm.cpp:107
 
 

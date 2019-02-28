@@ -83,8 +83,9 @@
 
 
 import serial, signal, configparser, os, csv, time
- 
-dataFileLocation = 'dataStream.csv'
+
+
+
 dataFileLocationEvent = 'detectedEvents.csv'
 iniFileLocation = 'CISS_sensor.ini'
 printInformation = False
@@ -368,7 +369,12 @@ def conv_data(data):
 
 # simple helper to write sensor data to a csv file
 def write_to_csv(id, buff, tstamp):
-    global dataFileLocation
+    global data_file_folder
+    global data_file_prefix
+    global minutes_per_csv
+
+    csv_timestamp = int(int(time.time()/(60*minutes_per_csv))*60*minutes_per_csv*1000)
+    dataFileLocation = os.path.join(data_file_folder, data_file_prefix + str(csv_timestamp) + ".csv")
     if len(buff) < 14:
         return
 
