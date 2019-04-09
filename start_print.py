@@ -117,10 +117,10 @@ def read_spectrometer_save(spectrometer, folder):
 
 # start logging
 
-def start_ciss_log(running, folder):
+def start_ciss_log(running, folder, com_port):
     try:
         logging.info("Opening the CISS device")
-        node = CissUsbConnectord.CISSNode(folder)
+        node = CissUsbConnectord.CISSNode(folder, com_port)
     except Exception as ex:
         logging.warning("CISS device not found")
         node = None

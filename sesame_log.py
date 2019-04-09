@@ -1,35 +1,21 @@
 import click
-import os
-import logging
 from github import Github
 import keyring
 import git
-import platform
-import time
 
 import os
-import asyncio
-import CissUsbConnectord
 import time
-import hid
 import logging
 import platform
 import threading
 
 from start_print import start_spectrometer_log, start_ciss_log
 
-from scan import Spectrometer, NNO_FILE_REF_CAL_COEFF, NNO_FILE_SCAN_DATA
-from spectrum_library import scan_interpret
-
-
-
-# import pygit2
-
-
 class fileStructure():
     def __init__(self, root_folder_name, create_repo=False):
         self.root_folder_name = root_folder_name
         self.measurements_folder_name = "Measurements"
+        self.to_commit = []
 
         # Create the root directory
         if os.path.isdir(root_folder_name):
@@ -59,7 +45,7 @@ class fileStructure():
             return False
 
     def create_repo(self):
-        return
+        print("Attempting to create repo")
         # using personal access token
         personal_access_token = keyring.get_password('github_auth', "uname")
         if not personal_access_token:
@@ -83,6 +69,8 @@ class fileStructure():
         self.repo.index.commit("Initial Commit")
         origin = self.repo.create_remote('origin', repo.clone_url)
         self.repo.git.push("--set-upstream", "origin", "master")
+
+
 
     def make_dir(self, *args):
         structure = os.path.join(self.root_folder_name,*args)
@@ -137,7 +125,7 @@ def cli(ctx, directory_index, create_repo, logging_level):
     ctx.obj['file'] = print_file
 
 @cli.command()
-@click.option('--ciss', type=int, multiple=True)
+@click.option('--ciss', type=str, multiple=True)
 @click.option('--spectrometer', type=int, multiple=True)
 @click.option('--timeout_mins', default=0)
 @click.pass_obj
@@ -153,19 +141,28 @@ def log(obj, ciss, spectrometer, timeout_mins):
     run_event.set()
 
     for count, spec_serial_no in enumerate(spectrometer):
-        print("Spectrometer: ", spec_serial_no)
+        logging.info("Spectrometer-{}: {}".format(count, spec_serial_no))
         folder = print_file.make_dir("Measurements", "Spectrometer-{}".format(count))
-        spectrometer_log = threading.Thread(target=start_spectrometer_log, args=[run_event, folder, spec_serial_no])
+        spectrometer_log = threading.Thread(
+            target=start_spectrometer_log,
+            args=[run_event, folder, spec_serial_no],
+            name="Spec-{}-Thread".format(count)
+        )
         spectrometer_log.start()
         threads.append(spectrometer_log)
 
-    for count, c in enumerate(ciss):
-        print("CISS: ", c)
+    for count, port in enumerate(ciss):
+        logging.info("CISS-{}: {}".format(count, port))
         folder = print_file.make_dir("Measurements", "CISS-{}".format(count))
         # Add com Port
-        ciss_log = threading.Thread(target=start_ciss_log, args=[run_event, folder])
+        ciss_log = threading.Thread(
+            target=start_ciss_log,
+            args=[run_event, folder, port],
+            name="CISS-{}-Thread".format(count)
+        )
         ciss_log.start()
         threads.append(ciss_log)
+
 
     try:
         while 1:
@@ -182,6 +179,18 @@ def log(obj, ciss, spectrometer, timeout_mins):
     for thread in threads:
         thread.join()
     logging.info("threads successfully closed")
+    time.sleep(0.1)
+
+    if print_file.repo:
+        if click.confirm("All changes will be commited, continue?"):
+            logging.debug("Committing all changes")
+            try:
+                print_file.repo.remotes.origin.pull()
+                print_file.repo.git.add("-A")
+                print_file.repo.index.commit("Logging session complete commit")
+                print_file.repo.remotes.origin.push()
+            except Exception as error:
+                logging.error("An error occurred whilst pushing to git. Manually check git status.")
 
 if __name__ == '__main__':
     cli(obj={})

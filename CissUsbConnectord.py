@@ -402,8 +402,9 @@ def write_to_csv_event(id, event, tstamp):
 out = 0
 
 class CISSNode:
-    def __init__(self, data_file_folder):
+    def __init__(self, data_file_folder, com_port):
         #initialize classes, dictionaries and variables
+        self.port = com_port
         self.data_file_folder = data_file_folder
         self.flgEventEnabled = 0
         no_sens = Sensor(0, 0, parse_enable, 0, 0)
@@ -488,7 +489,7 @@ class CISSNode:
             sIRConf.set("sensorcfg", "noise_event", "false")
             sIRConf.set("sensorcfg", "noise_threshold", "0")
             sIRConf.set("sensorcfg", "period_env_us", "1000000")
-            sIRConf.set("sensorcfg", "port", "/dev/ttyACM0")
+            # sIRConf.set("sensorcfg", "port", "/dev/ttyACM0")
 
             with open(iniFileLocation, "w") as newcfgfile:
                 sIRConf.write(newcfgfile)
@@ -499,7 +500,7 @@ class CISSNode:
         sensor_id_glbl = self.sensorid
         sample_period_inert_us = int(snIniConfig.get("sensorcfg", "period_inert_us"))
         sample_period_env_us = int(int(snIniConfig.get("sensorcfg", "period_env_us"))/1000000)
-        self.port = snIniConfig.get("sensorcfg", "port")
+        # self.port = snIniConfig.get("sensorcfg", "port")
         self.streaminglist["env"].streaming_enabled = str2bool(snIniConfig.get("sensorcfg", "env_stream"))
         self.streaminglist["acc"].streaming_enabled = str2bool(snIniConfig.get("sensorcfg", "acc_stream"))
         self.streaminglist["mag"].streaming_enabled = str2bool(snIniConfig.get("sensorcfg", "mag_stream"))
