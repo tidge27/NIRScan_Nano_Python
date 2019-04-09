@@ -368,10 +368,9 @@ def conv_data(data):
     return a
 
 # simple helper to write sensor data to a csv file
-def write_to_csv(id, buff, tstamp):
-    global data_file_folder
-    global data_file_prefix
-    global minutes_per_csv
+def write_to_csv(id, buff, tstamp, data_file_folder):
+    data_file_prefix = "CISS_measurements_"
+    minutes_per_csv = 10
 
     csv_timestamp = int(int(time.time()/(60*minutes_per_csv))*60*minutes_per_csv*1000)
     dataFileLocation = os.path.join(data_file_folder, data_file_prefix + str(csv_timestamp) + ".csv")
@@ -403,8 +402,9 @@ def write_to_csv_event(id, event, tstamp):
 out = 0
 
 class CISSNode:
-    def __init__(self):
+    def __init__(self, data_file_folder):
         #initialize classes, dictionaries and variables
+        self.data_file_folder = data_file_folder
         self.flgEventEnabled = 0
         no_sens = Sensor(0, 0, parse_enable, 0, 0)
         enable = Sensor(1, 2, parse_enable, 0, 0)
@@ -584,7 +584,7 @@ class CISSNode:
             payload.pop(0)
             if t >= 0:
                     mask = self.sensorlist[t].parse(payload[0:self.sensorlist[t].data_length])
-                    write_to_csv(self.sensorid, mask, int(time.time()*1000))
+                    write_to_csv(self.sensorid, mask, int(time.time()*1000), self.data_file_folder)
                     payload = payload[self.sensorlist[t].data_length:]
             else:
                 break
