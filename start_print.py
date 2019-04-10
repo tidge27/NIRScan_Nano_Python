@@ -7,6 +7,8 @@ import logging
 import platform
 import threading
 from threading import Thread
+import pylink
+from collections import deque
 
 
 from scan import Spectrometer, NNO_FILE_REF_CAL_COEFF, NNO_FILE_SCAN_DATA
@@ -149,6 +151,57 @@ def start_spectrometer_log(running, folder, serial_no=None):
     while(running.is_set()):
         time.sleep(5)
         read_spectrometer_save(spectrometer, folder)
+
+def start_seggr_log(running, folder):
+    target_device = "MKL03Z32XXX4"
+    jlink = pylink.JLink()
+    line_count = 0
+    while (running.is_set()):
+        print("connecting to JLink...")
+        jlink.open()
+        print("connecting to %s..." % target_device)
+        jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
+        jlink.connect(target_device)
+        print("connected, starting RTT...")
+        jlink.rtt_start()
+
+        while True:
+            try:
+                num_up = jlink.rtt_get_num_up_buffers()
+                num_down = jlink.rtt_get_num_down_buffers()
+                print("RTT started, %d up bufs, %d down bufs." % (num_up, num_down))
+                break
+            except pylink.errors.JLinkRTTException:
+                time.sleep(0.1)
+
+        try:
+            character_buffer = deque()
+            while jlink.connected():
+                terminal_bytes = jlink.rtt_read(0, 1024)
+                if terminal_bytes:
+                    characters = map(chr, terminal_bytes)
+                    character_buffer.extend(characters)
+                    while(1):
+                        try:
+                            end_line = character_buffer.index('\n')
+                            line_count += 1
+                            # TODO change this 3 to something more sensible than 3 lines!!!
+                            file = os.path.join(folder, "stream-{}.csv".format(int(line_count/3)))
+                            with open(file, "a") as stream_file:
+                                for char_index in range(0,end_line):
+                                    stream_file.write(character_buffer.popleft())
+
+                        except ValueError as error:
+                            # No newlines found yet
+                            break
+                    # sys.stdout.flush()
+                    pass
+                    # sys.stdout.write("".join(map(chr, terminal_bytes)))
+                    # sys.stdout.flush()
+                time.sleep(0.01)
+            print("JLink disconnected, exiting...")
+        except Exception:
+            logging.error("something with warp went wrong :'(")
 
 
 def main():

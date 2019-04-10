@@ -9,7 +9,7 @@ import logging
 import platform
 import threading
 
-from start_print import start_spectrometer_log, start_ciss_log
+from start_print import start_spectrometer_log, start_ciss_log, start_seggr_log
 
 class fileStructure():
     def __init__(self, root_folder_name, create_repo=False):
@@ -127,9 +127,10 @@ def cli(ctx, directory_index, create_repo, logging_level):
 @cli.command()
 @click.option('--ciss', type=str, multiple=True)
 @click.option('--spectrometer', type=int, multiple=True)
+@click.option('--warp', type=int, multiple=True)
 @click.option('--timeout_mins', default=0)
 @click.pass_obj
-def log(obj, ciss, spectrometer, timeout_mins):
+def log(obj, ciss, spectrometer, warp, timeout_mins):
     # click.echo('Debug is %s' % (ctx.obj['DEBUG'] and 'on' or 'off'))
     end_time = None
     if timeout_mins:
@@ -163,6 +164,16 @@ def log(obj, ciss, spectrometer, timeout_mins):
         ciss_log.start()
         threads.append(ciss_log)
 
+    for count, setting in enumerate(warp):
+        logging.info("Warp-{}: {}".format(count, setting))
+        folder = print_file.make_dir("Measurements", "Warp-{}".format(count))
+        warp_log = threading.Thread(
+            target=start_seggr_log,
+            args=[run_event, folder],
+            name="Spec-{}-Thread".format(count)
+        )
+        warp_log.start()
+        threads.append(warp_log)
 
     try:
         while 1:
