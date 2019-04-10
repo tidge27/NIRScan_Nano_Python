@@ -152,31 +152,31 @@ def start_spectrometer_log(running, folder, serial_no=None):
         time.sleep(5)
         read_spectrometer_save(spectrometer, folder)
 
-def start_seggr_log(running, folder):
-    target_device = "MKL03Z32XXX4"
+def start_seggr_log(running, folder, target_device):
+    max_lines_csv = 100000
     jlink = pylink.JLink()
     line_count = 0
     while (running.is_set()):
-        print("connecting to JLink...")
+        logging.info("connecting to JLink...")
         jlink.open()
-        print("connecting to %s..." % target_device)
+        logging.info("connecting to %s..." % target_device)
         jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
         jlink.connect(target_device)
-        print("connected, starting RTT...")
+        logging.info("connected, starting RTT...")
         jlink.rtt_start()
 
         while True:
             try:
                 num_up = jlink.rtt_get_num_up_buffers()
                 num_down = jlink.rtt_get_num_down_buffers()
-                print("RTT started, %d up bufs, %d down bufs." % (num_up, num_down))
+                logging.info("RTT started, %d up bufs, %d down bufs." % (num_up, num_down))
                 break
             except pylink.errors.JLinkRTTException:
                 time.sleep(0.1)
 
         try:
             character_buffer = deque()
-            while jlink.connected():
+            while jlink.connected() and running.is_set():
                 terminal_bytes = jlink.rtt_read(0, 1024)
                 if terminal_bytes:
                     characters = map(chr, terminal_bytes)
@@ -185,10 +185,12 @@ def start_seggr_log(running, folder):
                         try:
                             end_line = character_buffer.index('\n')
                             line_count += 1
-                            # TODO change this 3 to something more sensible than 3 lines!!!
-                            file = os.path.join(folder, "stream-{}.csv".format(int(line_count/3)))
+                            minutes_per_csv = 10
+                            csv_timestamp = int(int(time.time() / (60 * minutes_per_csv)) * 60 * minutes_per_csv * 1000)
+                            file = os.path.join(folder, "stream-{}.csv".format(csv_timestamp))
                             with open(file, "a") as stream_file:
-                                for char_index in range(0,end_line):
+                                stream_file.write("{}, ".format(str(int(time.time() * 1000))))
+                                for char_index in range(0,end_line+1):
                                     stream_file.write(character_buffer.popleft())
 
                         except ValueError as error:
@@ -199,7 +201,7 @@ def start_seggr_log(running, folder):
                     # sys.stdout.write("".join(map(chr, terminal_bytes)))
                     # sys.stdout.flush()
                 time.sleep(0.01)
-            print("JLink disconnected, exiting...")
+            logging.info("JLink disconnected, exiting...")
         except Exception:
             logging.error("something with warp went wrong :'(")
 

@@ -127,7 +127,7 @@ def cli(ctx, directory_index, create_repo, logging_level):
 @cli.command()
 @click.option('--ciss', type=str, multiple=True)
 @click.option('--spectrometer', type=int, multiple=True)
-@click.option('--warp', type=int, multiple=True)
+@click.option('--warp', type=str, multiple=True)
 @click.option('--timeout_mins', default=0)
 @click.pass_obj
 def log(obj, ciss, spectrometer, warp, timeout_mins):
@@ -164,13 +164,13 @@ def log(obj, ciss, spectrometer, warp, timeout_mins):
         ciss_log.start()
         threads.append(ciss_log)
 
-    for count, setting in enumerate(warp):
-        logging.info("Warp-{}: {}".format(count, setting))
+    for count, target_device in enumerate(warp):
+        logging.info("Warp-{}: {}".format(count, target_device))
         folder = print_file.make_dir("Measurements", "Warp-{}".format(count))
         warp_log = threading.Thread(
             target=start_seggr_log,
-            args=[run_event, folder],
-            name="Spec-{}-Thread".format(count)
+            args=[run_event, folder, target_device],
+            name="Warp-{}-Thread".format(count)
         )
         warp_log.start()
         threads.append(warp_log)
