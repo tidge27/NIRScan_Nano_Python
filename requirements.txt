@@ -12,7 +12,7 @@ idna==2.8
 keyring==19.0.1
 kiwisolver==1.0.1
 matplotlib==3.0.2
-numpy==1.16.0
+numpy==1.22.0
 pandas==0.24.1
 psutil==5.6.1
 PyGithub==1.43.6
